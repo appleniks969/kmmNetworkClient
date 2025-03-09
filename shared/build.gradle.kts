@@ -49,7 +49,12 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(libs.ktor.client.android)
+                implementation(libs.ktor.client.okhttp)
                 implementation(libs.kotlinx.coroutines.android)
+                
+                // Add Chucker dependencies directly to the library
+                // This makes it easier for users to integrate Chucker
+                implementation(libs.chucker.debug)
             }
         }
         

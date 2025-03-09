@@ -22,10 +22,12 @@ import kotlinx.serialization.json.Json
  * Implements Closeable to ensure proper resource cleanup.
  */
 class NetworkClient(
-    private val config: NetworkClientConfig = NetworkClientConfig()
+    private val config: NetworkClientConfig = NetworkClientConfig(),
+    customHttpClient: HttpClient? = null
 ) : Closeable {
     
-    val httpClient = createHttpClient(config)
+    // Use the custom HTTP client if provided, otherwise create one
+    val httpClient = customHttpClient ?: createHttpClient(config)
     
     companion object {
         /**

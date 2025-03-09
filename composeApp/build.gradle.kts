@@ -35,7 +35,27 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.ktor.client.android)
         }
+        
+        // Add iOS main source set
+        val iosMain by creating {
+            dependsOn(commonMain.get())
+        }
+        
+        // Configure iOS targets to depend on iosMain
+        val iosX64Main by getting {
+            dependsOn(iosMain)
+        }
+        
+        val iosArm64Main by getting {
+            dependsOn(iosMain)
+        }
+        
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain)
+        }
+        
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -45,9 +65,6 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
-            
-            // Add shared module dependency
-            implementation(projects.shared)
             
             // Add Ktor dependencies
             implementation(libs.ktor.client.core)
@@ -64,12 +81,12 @@ kotlin {
 }
 
 android {
-    namespace = "com.kmp.network.client"
+    namespace = "com.example.composeapp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.kmp.network.client"
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        applicationId = "com.example.composeapp"
+        minSdk = 26
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
@@ -92,5 +109,15 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    
+    // Add AppCompat dependency
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    
+    // Add OkHttp dependency for Chucker
+    implementation(libs.ktor.client.okhttp)
+    
+    // Add Chucker dependencies - using a configuration to prevent conflicts
+    debugImplementation(libs.chucker.debug)
+    releaseImplementation(libs.chucker.release)
 }
 
