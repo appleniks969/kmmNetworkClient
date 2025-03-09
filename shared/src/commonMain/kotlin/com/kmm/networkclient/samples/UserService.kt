@@ -1,5 +1,6 @@
 package com.kmm.networkclient.samples
 
+import com.kmm.networkclient.Closeable
 import com.kmm.networkclient.NetworkClient
 import com.kmm.networkclient.NetworkClientConfig
 import com.kmm.networkclient.NetworkException
@@ -20,8 +21,9 @@ data class CreateUserResponse(val id: Int, val createdAt: String)
 
 /**
  * Sample service demonstrating usage of the NetworkClient
+ * Implements Closeable to ensure proper resource cleanup
  */
-class UserService {
+class UserService : Closeable {
     private val baseUrl = "https://api.example.com"
     
     private val client = NetworkClient(
@@ -44,7 +46,7 @@ class UserService {
     suspend fun getUser(id: Int): User {
         return try {
             client.get(
-                url = "$baseUrl/users/$id",
+                url = "/users/$id",
                 headers = mapOf("Cache-Control" to "max-age=300")
             )
         } catch (e: NetworkException.ClientError) {
@@ -61,7 +63,7 @@ class UserService {
      */
     suspend fun getUsers(active: Boolean = true): List<User> {
         return client.get(
-            url = "$baseUrl/users?active=$active"
+            url = "/users?active=$active"
         )
     }
 
@@ -71,7 +73,7 @@ class UserService {
     suspend fun createUser(name: String, email: String): CreateUserResponse {
         val request = CreateUserRequest(name, email)
         return client.post(
-            url = "$baseUrl/users",
+            url = "/users",
             body = request
         )
     }
@@ -85,7 +87,7 @@ class UserService {
         if (email != null) updates["email"] = email
         
         return client.put(
-            url = "$baseUrl/users/$id",
+            url = "/users/$id",
             body = updates
         )
     }
@@ -95,15 +97,16 @@ class UserService {
      */
     suspend fun deleteUser(id: Int): Boolean {
         val response: Map<String, Boolean> = client.delete(
-            url = "$baseUrl/users/$id"
+            url = "/users/$id"
         )
         return response["success"] ?: false
     }
 
     /**
      * Close the client when it's no longer needed
+     * Implementation of the Closeable interface
      */
-    fun close() {
+    override fun close() {
         client.close()
     }
 } 

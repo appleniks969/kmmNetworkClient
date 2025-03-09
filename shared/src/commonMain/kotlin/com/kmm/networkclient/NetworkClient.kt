@@ -19,7 +19,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -27,99 +26,112 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * A KMM network client that provides common functionality for making HTTP requests.
  * This client is configured with default settings that can be overridden.
+ * Implements Closeable to ensure proper resource cleanup.
  */
 class NetworkClient(
     private val config: NetworkClientConfig = NetworkClientConfig()
-) {
-    val httpClient = HttpClient {
-        expectSuccess = config.expectSuccess
-        
-        // Configure logging
-        if (config.enableLogging) {
-            install(Logging) {
-                logger = Logger.DEFAULT
-                level = config.logLevel
-            }
-        }
-        
-        // Configure content negotiation
-        install(ContentNegotiation) {
-            json(Json {
-                prettyPrint = true
-                isLenient = config.isLenient
-                ignoreUnknownKeys = config.ignoreUnknownKeys
-            })
-        }
-        
-        // Configure default request settings
-        defaultRequest {
-            config.defaultHeaders.forEach { (key, value) ->
-                header(key, value)
-            }
-            
-            config.baseUrl?.let {
-                url(it)
-            }
-        }
-        
-        // Configure authentication if needed
-        if (config.authConfig != null) {
-            install(Auth) {
-                when (val authConfig = config.authConfig) {
-                    is NetworkClientConfig.AuthConfig.Bearer -> {
-                        bearer {
-                            loadTokens {
-                                BearerTokens(
-                                    accessToken = authConfig.getToken(),
-                                    refreshToken = authConfig.refreshToken ?: ""
-                                )
-                            }
-                            
-                            refreshTokens {
-                                authConfig.refreshToken?.let {
-                                    BearerTokens(
-                                        accessToken = authConfig.getToken(),
-                                        refreshToken = it
-                                    )
-                                } ?: BearerTokens(
-                                    accessToken = authConfig.getToken(),
-                                    refreshToken = ""
-                                )
-                            }
-                        }
+) : Closeable {
+    
+    val httpClient = createHttpClient(config)
+    
+    companion object {
+        /**
+         * Creates an HTTP client with the provided configuration.
+         */
+        private fun createHttpClient(config: NetworkClientConfig): HttpClient {
+            return HttpClient {
+                expectSuccess = config.expectSuccess
+                
+                // Configure logging
+                if (config.enableLogging) {
+                    install(Logging) {
+                        logger = Logger.DEFAULT
+                        level = config.logLevel
                     }
-                    is NetworkClientConfig.AuthConfig.Basic -> {
-                        basic {
-                            credentials {
-                                BasicAuthCredentials(
-                                    username = authConfig.username,
-                                    password = authConfig.password
-                                )
-                            }
-                        }
-                    }
-                    else -> {}
                 }
-            }
-        }
+                
+                // Configure content negotiation
+                install(ContentNegotiation) {
+                    json(Json {
+                        prettyPrint = true
+                        isLenient = config.isLenient
+                        ignoreUnknownKeys = config.ignoreUnknownKeys
+                    })
+                }
+                
+                // Configure default request settings
+                defaultRequest {
+                    config.defaultHeaders.forEach { (key, value) ->
+                        header(key, value)
+                    }
+                    
+                    config.baseUrl?.let {
+                        url(it)
+                    }
+                }
+                
+                // Configure authentication if needed
+                if (config.authConfig != null) {
+                    install(Auth) {
+                        when (val authConfig = config.authConfig) {
+                            is NetworkClientConfig.AuthConfig.Bearer -> {
+                                bearer {
+                                    loadTokens {
+                                        BearerTokens(
+                                            accessToken = authConfig.getToken(),
+                                            refreshToken = authConfig.refreshToken ?: ""
+                                        )
+                                    }
+                                    
+                                    refreshTokens {
+                                        authConfig.refreshToken?.let {
+                                            BearerTokens(
+                                                accessToken = authConfig.getToken(),
+                                                refreshToken = it
+                                            )
+                                        } ?: BearerTokens(
+                                            accessToken = authConfig.getToken(),
+                                            refreshToken = ""
+                                        )
+                                    }
+                                }
+                            }
+                            is NetworkClientConfig.AuthConfig.Basic -> {
+                                basic {
+                                    credentials {
+                                        BasicAuthCredentials(
+                                            username = authConfig.username,
+                                            password = authConfig.password
+                                        )
+                                    }
+                                }
+                            }
+                            else -> {
+                                // No additional configuration for other auth types
+                            }
+                        }
+                    }
+                }
 
-        // Configure timeout
-        install(HttpTimeout) {
-            requestTimeoutMillis = config.requestTimeoutMillis
-            connectTimeoutMillis = config.connectTimeoutMillis
-            socketTimeoutMillis = config.socketTimeoutMillis
-        }
-        
-        // Configure HttpRequestRetry
-        if (config.retryConfig.maxRetries > 0) {
-            install(HttpRequestRetry) {
-                retryOnExceptionOrServerErrors(
-                    maxRetries = config.retryConfig.maxRetries
-                )
-                exponentialDelay(
-                    base = config.retryConfig.exponentialBase,
-                    maxDelayMs = config.retryConfig.maxDelayMs
-                )
+                // Configure timeout
+                install(HttpTimeout) {
+                    requestTimeoutMillis = config.requestTimeoutMillis
+                    connectTimeoutMillis = config.connectTimeoutMillis
+                    socketTimeoutMillis = config.socketTimeoutMillis
+                }
+                
+                // Configure HttpRequestRetry
+                if (config.retryConfig.maxRetries > 0) {
+                    install(HttpRequestRetry) {
+                        retryOnExceptionOrServerErrors(
+                            maxRetries = config.retryConfig.maxRetries
+                        )
+                        exponentialDelay(
+                            base = config.retryConfig.exponentialBase,
+                            maxDelayMs = config.retryConfig.maxDelayMs
+                        )
+                    }
+                }
             }
         }
     }
@@ -266,8 +278,16 @@ class NetworkClient(
 
     /**
      * Closes the HTTP client and releases all resources.
+     * Implementation of the Closeable interface.
      */
-    fun close() {
+    override fun close() {
         httpClient.close()
     }
+}
+
+/**
+ * Interface for closeable resources
+ */
+interface Closeable {
+    fun close()
 } 

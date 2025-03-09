@@ -39,11 +39,4 @@ sealed class NetworkException : Exception {
         message: String,
         cause: Throwable? = null
     ) : NetworkException(message, cause)
-}
-
-/**
- * Extension function to ensure a path starts with a slash.
- */
-internal fun String.ensureStartsWithSlash(): String {
-    return if (isNotEmpty() && this[0] != '/') "/$this" else this
 } 
