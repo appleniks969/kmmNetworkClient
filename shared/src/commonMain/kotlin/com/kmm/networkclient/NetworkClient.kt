@@ -50,19 +50,49 @@ class NetworkClient(
                     }
                 }
                 
-                // Configure content negotiation
+                // Configure content negotiation with custom JSON if provided
                 install(ContentNegotiation) {
-                    json(Json {
-                        prettyPrint = true
-                        isLenient = config.isLenient
-                        ignoreUnknownKeys = config.ignoreUnknownKeys
-                    })
+                    json(config.createJson())
                 }
                 
-                // Configure default request settings
+                // Configure default request settings with all default headers
                 defaultRequest {
                     config.defaultHeaders.forEach { (key, value) ->
                         header(key, value)
+                    }
+                    
+                    // Apply any auth-related headers that should be included in every request
+                    if (config.authConfig != null) {
+                        when (val authConfig = config.authConfig) {
+                            is NetworkClientConfig.AuthConfig.Custom -> {
+                                // Apply custom auth headers
+                                authConfig.headers.forEach { (key, value) ->
+                                    header(key, value)
+                                }
+                                
+                                // Allow the authenticator callback to add dynamic headers for each request
+                                val dynamicHeaders = mutableMapOf<String, String>()
+                                authConfig.authenticator(dynamicHeaders)
+                                dynamicHeaders.forEach { (key, value) ->
+                                    header(key, value)
+                                }
+                            }
+                            is NetworkClientConfig.AuthConfig.Bearer -> {
+                                // Add custom headers for Bearer auth
+                                authConfig.customHeaders.forEach { (key, value) ->
+                                    header(key, value)
+                                }
+                                // The actual token is handled by the Auth plugin
+                            }
+                            is NetworkClientConfig.AuthConfig.Basic -> {
+                                // Add custom headers for Basic auth
+                                authConfig.customHeaders.forEach { (key, value) ->
+                                    header(key, value)
+                                }
+                                // The actual credentials are handled by the Auth plugin
+                            }
+                            else -> {}
+                        }
                     }
                     
                     config.baseUrl?.let {
@@ -106,9 +136,8 @@ class NetworkClient(
                                     }
                                 }
                             }
-                            else -> {
-                                // No additional configuration for other auth types
-                            }
+                            // Custom auth is handled in defaultRequest
+                            else -> {}
                         }
                     }
                 }

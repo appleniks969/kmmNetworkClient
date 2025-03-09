@@ -11,28 +11,19 @@ import androidx.compose.ui.unit.dp
 import com.kmm.networkclient.NetworkClient
 import com.kmm.networkclient.NetworkClientConfig
 import com.kmm.networkclient.NetworkException
-import com.kmm.networkclient.samples.User
+import com.kmp.network.client.samples.User
+import com.kmp.network.client.samples.UserService
 import kotlinx.coroutines.launch
 
 @Composable
 fun DemoScreen() {
-    // Create a NetworkClient instance with proper configuration
-    val networkClient = remember { 
-        NetworkClient(
-            NetworkClientConfig(
-                baseUrl = "https://jsonplaceholder.typicode.com",
-                enableLogging = true,
-                retryConfig = NetworkClientConfig.RetryConfig(
-                    maxRetries = 2
-                )
-            )
-        ) 
-    }
+    // Create a UserService which manages its own NetworkClient
+    val userService = remember { UserService() }
     
-    // Remember to close the client when the composable is disposed
+    // Remember to close the service when the composable is disposed
     DisposableEffect(Unit) {
         onDispose {
-            networkClient.close()
+            userService.close()
         }
     }
     
@@ -45,7 +36,7 @@ fun DemoScreen() {
     // Load users when the screen is first displayed
     LaunchedEffect(Unit) {
         loading = true
-        fetchUsers(networkClient) { result ->
+        fetchUsers(userService) { result ->
             loading = false
             result.fold(
                 onSuccess = { userList -> 
@@ -92,7 +83,7 @@ fun DemoScreen() {
                             error = null
                             loading = true
                             scope.launch {
-                                fetchUsers(networkClient) { result ->
+                                fetchUsers(userService) { result ->
                                     loading = false
                                     result.fold(
                                         onSuccess = { userList -> 
@@ -125,7 +116,7 @@ fun DemoScreen() {
                             onClick = {
                                 loading = true
                                 scope.launch {
-                                    fetchUsers(networkClient) { result ->
+                                    fetchUsers(userService) { result ->
                                         loading = false
                                         result.fold(
                                             onSuccess = { userList -> 
@@ -195,12 +186,12 @@ fun UserItem(user: User) {
 }
 
 private suspend fun fetchUsers(
-    networkClient: NetworkClient,
+    userService: UserService,
     onResult: (Result<List<User>>) -> Unit
 ) {
     try {
-        // Make a real API call to JSONPlaceholder
-        val users: List<User> = networkClient.get("/users")
+        // Use the UserService to get users
+        val users = userService.getUsers()
         onResult(Result.success(users))
     } catch (e: NetworkException) {
         onResult(Result.failure(e))

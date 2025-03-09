@@ -1,39 +1,56 @@
-package com.kmm.networkclient.samples
+package com.kmp.network.client.samples
 
 import com.kmm.networkclient.Closeable
 import com.kmm.networkclient.NetworkClient
 import com.kmm.networkclient.NetworkClientConfig
 import com.kmm.networkclient.NetworkException
 import io.ktor.client.plugins.logging.*
-import kotlinx.serialization.Serializable
-
-/**
- * Sample data classes for API requests and responses
- */
-@Serializable
-data class User(val id: Int, val name: String, val email: String)
-
-@Serializable
-data class CreateUserRequest(val name: String, val email: String)
-
-@Serializable
-data class CreateUserResponse(val id: Int, val createdAt: String)
+import kotlinx.serialization.json.Json
 
 /**
  * Sample service demonstrating usage of the NetworkClient
  * Implements Closeable to ensure proper resource cleanup
  */
 class UserService : Closeable {
-    private val baseUrl = "https://api.example.com"
+    private val baseUrl = "https://jsonplaceholder.typicode.com"
+    
+    // Custom JSON configuration
+    private val customJson = Json {
+        prettyPrint = true
+        isLenient = true
+        ignoreUnknownKeys = true
+        // Add any other custom JSON configuration options here
+    }
+    
+    // Custom headers for all requests
+    private val customHeaders = mapOf(
+        "App-Version" to "1.0.0",
+        "Platform" to "KMM",
+        "Accept" to "application/json"
+    )
+    
+    // Create a custom auth config for demonstration
+    private val customAuth = NetworkClientConfig.AuthConfig.Custom(
+        // Static headers that will be added to every request
+        headers = mapOf("X-Api-Key" to "demo-key-12345"),
+        // Dynamic headers that can be computed for each request
+        authenticator = { dynamicHeaders ->
+            // Add timestamp and any other dynamic values
+            dynamicHeaders["X-Auth-Timestamp"] = System.currentTimeMillis().toString()
+            // In a real app, you might compute signatures or add other auth headers
+        }
+    )
     
     private val client = NetworkClient(
         NetworkClientConfig(
             baseUrl = baseUrl,
-            defaultHeaders = mapOf("App-Version" to "1.0.0"),
+            defaultHeaders = customHeaders,
             enableLogging = true,
             logLevel = LogLevel.HEADERS,
+            jsonConfiguration = customJson,  // Use our custom JSON config
             requestTimeoutMillis = 30000L,
             connectTimeoutMillis = 15000L,
+            authConfig = customAuth,  // Use our custom auth config
             retryConfig = NetworkClientConfig.RetryConfig(
                 maxRetries = 3
             )
@@ -61,9 +78,9 @@ class UserService : Closeable {
     /**
      * Get all users
      */
-    suspend fun getUsers(active: Boolean = true): List<User> {
+    suspend fun getUsers(): List<User> {
         return client.get(
-            url = "/users?active=$active"
+            url = "/users"
         )
     }
 
