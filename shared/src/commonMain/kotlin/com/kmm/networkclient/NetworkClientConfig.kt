@@ -1,6 +1,7 @@
 package com.kmm.networkclient
 
 import io.ktor.client.plugins.logging.*
+import io.ktor.http.*
 import kotlinx.serialization.json.Json
 
 /**
@@ -114,6 +115,75 @@ data class NetworkClientConfig(
             val headers: Map<String, String> = emptyMap(),
             val authenticator: (dynamicHeaders: MutableMap<String, String>) -> Unit
         ) : AuthConfig()
+        
+        /**
+         * Dynamic authentication based on HTTP method and/or request path
+         * This allows different authentication methods for different endpoints
+         * and HTTP methods within the same client.
+         * 
+         * @param selector Function that selects the appropriate authentication config based on method and path
+         */
+        data class Dynamic(
+            val selector: (method: HttpMethod, path: String) -> AuthConfig?
+        ) : AuthConfig()
+        
+        /**
+         * Rule-based authentication configuration
+         * This is a more structured approach to dynamic authentication
+         * that uses a list of predefined rules.
+         */
+        data class RuleBased(
+            val rules: List<Rule>,
+            val defaultConfig: AuthConfig? = null // fallback if no rules match
+        ) : AuthConfig() {
+            /**
+             * A rule for selecting an authentication method based on HTTP method and path pattern
+             */
+            data class Rule(
+                val methods: Set<HttpMethod>? = null, // null means all methods
+                val pathPattern: Regex, // regex pattern to match the path
+                val authConfig: AuthConfig
+            )
+            
+            companion object {
+                /**
+                 * Helper function to create a rule for specific HTTP methods and path pattern
+                 */
+                fun rule(
+                    methods: Set<HttpMethod>? = null,
+                    pathPattern: String,
+                    authConfig: AuthConfig
+                ): Rule {
+                    return Rule(
+                        methods = methods,
+                        pathPattern = pathPattern.toRegex(),
+                        authConfig = authConfig
+                    )
+                }
+                
+                /**
+                 * Helper function to create a rule for a specific HTTP method and path pattern
+                 */
+                fun rule(
+                    method: HttpMethod,
+                    pathPattern: String,
+                    authConfig: AuthConfig
+                ): Rule {
+                    return Rule(
+                        methods = setOf(method),
+                        pathPattern = pathPattern.toRegex(),
+                        authConfig = authConfig
+                    )
+                }
+            }
+        }
+        
+        /**
+         * Explicitly indicates that no authentication should be applied
+         * This is useful for public endpoints that don't require authentication
+         * but are accessed from the same client as authenticated endpoints.
+         */
+        object NoAuth : AuthConfig()
     }
     
     /**

@@ -5,6 +5,7 @@ import com.kmm.networkclient.NetworkClient
 import com.kmm.networkclient.NetworkClientConfig
 import com.kmm.networkclient.NetworkException
 import io.ktor.client.plugins.logging.*
+import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 
 /**
@@ -36,7 +37,7 @@ class UserService : Closeable {
         // Dynamic headers that can be computed for each request
         authenticator = { dynamicHeaders ->
             // Add timestamp and any other dynamic values
-            dynamicHeaders["X-Auth-Timestamp"] = System.currentTimeMillis().toString()
+            dynamicHeaders["X-Auth-Timestamp"] = Clock.System.now().toEpochMilliseconds().toString()
             // In a real app, you might compute signatures or add other auth headers
         }
     )

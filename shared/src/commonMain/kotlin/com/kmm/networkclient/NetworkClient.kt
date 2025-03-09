@@ -9,19 +9,12 @@ import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
-import io.ktor.client.plugins.observer.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.core.*
+import io.ktor.util.encodeBase64
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * A KMM network client that provides common functionality for making HTTP requests.
@@ -91,6 +84,13 @@ class NetworkClient(
                                 }
                                 // The actual credentials are handled by the Auth plugin
                             }
+                            is NetworkClientConfig.AuthConfig.Dynamic, 
+                            is NetworkClientConfig.AuthConfig.RuleBased,
+                            is NetworkClientConfig.AuthConfig.NoAuth -> {
+                                // Dynamic auth is handled per-request based on method and path
+                                // NoAuth doesn't add any headers at the global level
+                                // We'll just apply common headers here if needed
+                            }
                             else -> {}
                         }
                     }
@@ -136,7 +136,7 @@ class NetworkClient(
                                     }
                                 }
                             }
-                            // Custom auth is handled in defaultRequest
+                            // Dynamic auth types are applied in request pipeline
                             else -> {}
                         }
                     }
@@ -166,6 +166,80 @@ class NetworkClient(
     }
 
     /**
+     * Applies dynamic authentication based on HTTP method and request path
+     */
+    public fun HttpRequestBuilder.applyDynamicAuth(method: HttpMethod, path: String) {
+        if (config.authConfig == null) return
+        
+        val effectiveAuthConfig = when (val authConfig = config.authConfig) {
+            is NetworkClientConfig.AuthConfig.Dynamic -> {
+                // Use the selector function to determine the authentication method
+                authConfig.selector(method, path)
+            }
+            is NetworkClientConfig.AuthConfig.RuleBased -> {
+                // Find a matching rule based on method and path
+                val matchingRule = authConfig.rules.firstOrNull { rule ->
+                    (rule.methods == null || method in rule.methods) && 
+                    rule.pathPattern.matches(path)
+                }
+                
+                // Use the matching rule's auth config or fall back to default
+                matchingRule?.authConfig ?: authConfig.defaultConfig
+            }
+            // If not using dynamic auth, just use the configured auth
+            else -> authConfig
+        }
+        
+        // Apply the effective authentication configuration
+        when (val auth = effectiveAuthConfig) {
+            is NetworkClientConfig.AuthConfig.Custom -> {
+                // Apply custom auth headers
+                auth.headers.forEach { (key, value) ->
+                    header(key, value)
+                }
+                
+                // Add dynamic headers
+                val dynamicHeaders = mutableMapOf<String, String>()
+                auth.authenticator(dynamicHeaders)
+                dynamicHeaders.forEach { (key, value) ->
+                    header(key, value)
+                }
+            }
+            is NetworkClientConfig.AuthConfig.Bearer -> {
+                // Add the bearer token header
+                header(HttpHeaders.Authorization, "Bearer ${auth.getToken()}")
+                
+                // Add any custom headers
+                auth.customHeaders.forEach { (key, value) ->
+                    header(key, value)
+                }
+            }
+            is NetworkClientConfig.AuthConfig.Basic -> {
+                // Instead of manually encoding, let Ktor handle this by setting up basic auth
+                // for this specific request
+                basicAuth(auth.username, auth.password)
+                
+                // Add any custom headers
+                auth.customHeaders.forEach { (key, value) ->
+                    header(key, value)
+                }
+            }
+            is NetworkClientConfig.AuthConfig.NoAuth -> {
+                // Explicitly no authentication - do nothing
+                // This case is handled explicitly to make it clear that authentication is intentionally skipped
+            }
+            null -> {
+                // Null means no authentication for this request
+                // This can happen when using Dynamic authentication and the selector returns null
+            }
+            else -> {
+                // For nested dynamic auth types, we don't apply anything
+                // to avoid potential infinite recursion
+            }
+        }
+    }
+
+    /**
      * Makes a GET request to the specified URL and returns the response as the specified type.
      * 
      * @param url The URL to make the request to
@@ -181,6 +255,10 @@ class NetworkClient(
                 headers.forEach { (key, value) ->
                     header(key, value)
                 }
+                
+                // Extract path from URL for dynamic auth
+                val path = extractPathFromUrl(url)
+                applyDynamicAuth(HttpMethod.Get, path)
             }.body()
         }
     }
@@ -205,6 +283,10 @@ class NetworkClient(
                 }
                 contentType(ContentType.Application.Json)
                 setBody(body)
+                
+                // Extract path from URL for dynamic auth
+                val path = extractPathFromUrl(url)
+                applyDynamicAuth(HttpMethod.Post, path)
             }.body()
         }
     }
@@ -229,6 +311,10 @@ class NetworkClient(
                 }
                 contentType(ContentType.Application.Json)
                 setBody(body)
+                
+                // Extract path from URL for dynamic auth
+                val path = extractPathFromUrl(url)
+                applyDynamicAuth(HttpMethod.Put, path)
             }.body()
         }
     }
@@ -249,6 +335,10 @@ class NetworkClient(
                 headers.forEach { (key, value) ->
                     header(key, value)
                 }
+                
+                // Extract path from URL for dynamic auth
+                val path = extractPathFromUrl(url)
+                applyDynamicAuth(HttpMethod.Delete, path)
             }.body()
         }
     }
@@ -273,7 +363,30 @@ class NetworkClient(
                 }
                 contentType(ContentType.Application.Json)
                 setBody(body)
+                
+                // Extract path from URL for dynamic auth
+                val path = extractPathFromUrl(url)
+                applyDynamicAuth(HttpMethod.Patch, path)
             }.body()
+        }
+    }
+    
+    /**
+     * Helper method to extract the path from a URL
+     */
+    public fun extractPathFromUrl(url: String): String {
+        // Try to parse the URL
+        return try {
+            val urlObj = Url(url)
+            urlObj.encodedPath
+        } catch (e: Exception) {
+            // If the URL is a relative path (not a complete URL)
+            if (!url.startsWith("http")) {
+                url.substringBefore('?')
+            } else {
+                // For malformed URLs, just use the whole string
+                url
+            }
         }
     }
 
