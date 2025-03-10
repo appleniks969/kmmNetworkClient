@@ -1,0 +1,173 @@
+{
+    "editor": {
+      "language": {
+        "kotlin": {
+          "enableComments": true,
+          "suggestImports": true,
+          "enableFolding": true
+        },
+        "swift": {
+          "enableComments": true,
+          "suggestImports": true,
+          "enableFolding": true
+        }
+      },
+      "snippets": {
+        "max_lines": 50,
+        "min_lines": 1
+      },
+      "indentation": {
+        "kotlin": 4,
+        "swift": 4,
+        "xml": 4,
+        "gradle": 4
+      }
+    },
+    "intelliCode": {
+      "enabled": true,
+      "multiline": true
+    },
+    "copilot": {
+      "enableCompletions": true,
+      "enableGhostText": true,
+      "enableChat": true,
+      "enableTabCompletion": true,
+      "listOnboardingSuggestions": false
+    },
+    "contextualFiltering": {
+      "enabled": true,
+      "filterLevel": "auto"
+    },
+    "repository": {
+      "mainBranch": "main",
+      "ignorePatterns": [".gradle/", "build/", ".idea/", ".DS_Store", "*.iml", "local.properties"]
+    },
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "github.copilot.chat.codeGeneration.instructions": [
+      "Use Kotlin coding conventions with 4 spaces for indentation.",
+      "Follow Kotlin Multiplatform conventions for platform-specific code.",
+      "Prioritize code sharing through the common module when possible.",
+      "Use suspending functions for asynchronous operations in Kotlin.",
+      "Always use extension functions for platform-specific functionality.",
+      "Implement proper error handling for network operations.",
+      "Use Ktor for network requests and Kotlinx.serialization for JSON."
+    ],
+    "github.copilot.chat.testGeneration.instructions": [
+      "Write unit tests with clear arrange-act-assert structure.",
+      "Use MockK for mocking in Kotlin tests.",
+      "Include tests for both success and error scenarios.",
+      "For common code, ensure tests are platform-agnostic.",
+      "For platform-specific code, create separate test files in respective source sets."
+    ],
+    "github.copilot.chat.reviewSelection.instructions": [
+      "Ensure code follows Kotlin and Swift best practices.",
+      "Check for proper null safety in Kotlin code.",
+      "Verify that platform-specific code is kept to a minimum.",
+      "Look for proper resource cleanup in network operations.",
+      "Validate that error handling is comprehensive.",
+      "Ensure concurrency is handled correctly on both platforms.",
+      "Check that platform-specific implementations are consistent with the common interface."
+    ],
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+      "Format commit messages with a concise first line summary (max 72 chars).",
+      "Use the format '[Component] Action: Description' for the first line.",
+      "Valid components are: 'Network', 'Android', 'iOS', 'Common', 'Build', 'Docs'.",
+      "Use imperative mood (e.g., 'Add', 'Fix', 'Update', 'Refactor').",
+      "After the first line, include a blank line followed by a more detailed explanation if needed.",
+      "For bug fixes, include 'Fixes #issue-number' in the detailed explanation.",
+      "For features, mention which platforms are affected (Android, iOS, or both)."
+    ],
+    "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+      "Format the PR title as '[Component] Brief description'.",
+      "Include sections in the description: 'Overview', 'Changes', 'Testing Done', and 'Platform Impact'.",
+      "In the Overview section, briefly explain the purpose of the changes.",
+      "In the Changes section, list the main code changes with bullet points.",
+      "In the Testing Done section, describe what testing was performed.",
+      "In the Platform Impact section, explain how the changes affect Android and iOS platforms."
+    ],
+    "suggestions": {
+      "kotlin": {
+        "patterns": {
+          "preferCoroutines": true,
+          "preferExtensionFunctions": true,
+          "preferImmutableCollections": true,
+          "preferNullSafety": true,
+          "preferNamedParameters": true,
+          "preferWithReceivers": true,
+          "platformSpecificPatterns": {
+            "androidPriority": "high",
+            "iosPriority": "high",
+            "commonPriority": "highest"
+          }
+        },
+        "style": {
+          "indentationStyle": "space",
+          "indentationSize": 4,
+          "maxLineLength": 120,
+          "preferTrailingCommas": true,
+          "braceStyle": "end-of-line"
+        }
+      },
+      "swift": {
+        "patterns": {
+          "preferAsyncAwait": true,
+          "preferStructsOverClasses": true,
+          "preferOptionals": true,
+          "preferNamedParameters": true
+        },
+        "style": {
+          "indentationStyle": "space",
+          "indentationSize": 4,
+          "maxLineLength": 120,
+          "preferTrailingCommas": true
+        }
+      }
+    },
+    "codeAnalysis": {
+      "enabled": true,
+      "suggestRefactoring": true,
+      "complexity": {
+        "functionComplexityThreshold": 15,
+        "fileComplexityThreshold": 150
+      },
+      "quality": {
+        "enableNullSafetyChecks": true,
+        "enableTypeChecking": true,
+        "enablePlatformSpecificChecks": true
+      }
+    },
+    "documentation": {
+      "generateComments": true,
+      "commentStyle": "kdoc",
+      "classDocs": true,
+      "functionDocs": true,
+      "propertyDocs": true
+    },
+    "templates": {
+      "modelClasses": {
+        "dataClass": true,
+        "parcelize": true,
+        "serializable": true
+      },
+      "networkRequests": {
+        "preferCoroutines": true,
+        "useKtor": true,
+        "useKotlinxSerialization": true
+      },
+      "platformSpecific": {
+        "android": {
+          "useAndroidX": true,
+          "minSdkVersion": 24,
+          "targetSdkVersion": 34
+        },
+        "iOS": {
+          "minimumOSVersion": "14.0",
+          "preferSwiftUI": true
+        }
+      }
+    },
+    "autoCompletionFilters": {
+      "includeTests": false,
+      "preferProduction": true
+    }
+  } 
